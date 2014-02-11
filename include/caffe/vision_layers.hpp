@@ -320,6 +320,47 @@ class DataLayer : public Layer<Dtype> {
   Blob<Dtype> data_mean_;
 };
 
+template <typename Dtype>
+class DataRandTransformLayer : public Layer<Dtype> {
+ public:
+  explicit DataRandTransformLayer(const LayerParameter& param)
+      : Layer<Dtype>(param) {}
+  virtual ~DataRandTransformLayer();
+  virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top);
+      
+ protected:
+  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top);
+  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top);
+  virtual Dtype Backward_cpu(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  virtual Dtype Backward_gpu(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+      
+  int NUM_;
+  int CHANNELS_;
+  int WIDTH_;
+  int HEIGHT_;
+  
+  bool apply_normalization_;
+  
+  bool apply_mirroring_;
+  float prob_mirroring_;
+  
+  bool apply_rot_;
+  float rot_min_;
+  float rot_max_;
+  
+  bool apply_blur_;
+  int blur_size_;
+  float blur_max_var_;
+  
+  bool apply_contrast_brightness_;
+  float alpha_;
+  float beta_;
+};
 
 template <typename Dtype>
 class SoftmaxLayer : public Layer<Dtype> {
