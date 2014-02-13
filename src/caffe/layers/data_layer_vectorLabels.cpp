@@ -1,4 +1,4 @@
-// Copyright 2013 Yangqing Jia
+// Copyright 2014 Julien Martel
 
 #include <stdint.h>
 #include <leveldb/db.h>
@@ -16,9 +16,12 @@ using std::string;
 namespace caffe {
 
 template <typename Dtype>
-void* DataLayerPrefetch(void* layer_pointer) {
+void* DataLayerVectorLabelsPrefetch(void* layer_pointer) 
+{
+   LOG(ERROR) << "Here";
+	
   CHECK(layer_pointer);
-  DataLayer<Dtype>* layer = reinterpret_cast<DataLayer<Dtype>*>(layer_pointer);
+  DataLayerVectorLabels<Dtype>* layer = reinterpret_cast<DataLayerVectorLabels<Dtype>*>(layer_pointer);
   CHECK(layer);
   Datum datum;
   CHECK(layer->prefetch_data_);
@@ -38,6 +41,7 @@ void* DataLayerPrefetch(void* layer_pointer) {
   const int height = layer->datum_height_;
   const int width = layer->datum_width_;
   const int size = layer->datum_size_;
+  const int numlabels = layer->datum_numlabels_;
   const Dtype* mean = layer->data_mean_.cpu_data();
   for (int itemid = 0; itemid < batchsize; ++itemid) {
     // get a blob
@@ -101,8 +105,13 @@ void* DataLayerPrefetch(void* layer_pointer) {
       }
     }
 
-    top_label[itemid] = datum.label();
-   
+    // Copy the label data
+    for(int l=0; l<numlabels; l++)
+    {
+		// Top data
+		top_label[itemid * numlabels + l] = datum.label_data(l);
+	}
+	
     // go to the next iter
     layer->iter_->Next();
     if (!layer->iter_->Valid()) {
@@ -116,14 +125,16 @@ void* DataLayerPrefetch(void* layer_pointer) {
 }
 
 template <typename Dtype>
-DataLayer<Dtype>::~DataLayer<Dtype>() {
+DataLayerVectorLabels<Dtype>::~DataLayerVectorLabels<Dtype>() 
+{
   // Finally, join the thread
   CHECK(!pthread_join(thread_, NULL)) << "Pthread joining failed.";
 }
 
 template <typename Dtype>
-void DataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
-      vector<Blob<Dtype>*>* top) {
+void DataLayerVectorLabels<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
+										 vector<Blob<Dtype>*>* top) 
+{
   CHECK_EQ(bottom.size(), 0) << "Data Layer takes no input blobs.";
   CHECK_EQ(top->size(), 2) << "Data Layer takes two blobs as output.";
   // Initialize the leveldb
@@ -170,11 +181,12 @@ void DataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   LOG(INFO) << "output data size: " << (*top)[0]->num() << ","
       << (*top)[0]->channels() << "," << (*top)[0]->height() << ","
       << (*top)[0]->width();
-  // label
-  (*top)[1]->Reshape(this->layer_param_.batchsize(), 1, 1, 1);
+  // label (they are now vectors)
+  (*top)[1]->Reshape(this->layer_param_.batchsize(), datum.numlabels(), 1, 1);
   prefetch_label_.reset(
-      new Blob<Dtype>(this->layer_param_.batchsize(), 1, 1, 1));
+      new Blob<Dtype>(this->layer_param_.batchsize(), datum.numlabels(), 1, 1));
   // datum size
+  datum_numlabels_ = datum.numlabels();
   datum_channels_ = datum.channels();
   datum_height_ = datum.height();
   datum_width_ = datum.width();
@@ -203,14 +215,15 @@ void DataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   prefetch_label_->mutable_cpu_data();
   data_mean_.cpu_data();
   DLOG(INFO) << "Initializing prefetch";
-  CHECK(!pthread_create(&thread_, NULL, DataLayerPrefetch<Dtype>,
+  CHECK(!pthread_create(&thread_, NULL, DataLayerVectorLabelsPrefetch<Dtype>,
       reinterpret_cast<void*>(this))) << "Pthread execution failed.";
   DLOG(INFO) << "Prefetch initialized.";
 }
 
 template <typename Dtype>
-void DataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
-      vector<Blob<Dtype>*>* top) {
+void DataLayerVectorLabels<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+											   vector<Blob<Dtype>*>* top) 
+{
   // First, join the thread
   CHECK(!pthread_join(thread_, NULL)) << "Pthread joining failed.";
   // Copy the data
@@ -224,8 +237,9 @@ void DataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
-void DataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
-      vector<Blob<Dtype>*>* top) {
+void DataLayerVectorLabels<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+											   vector<Blob<Dtype>*>* top) 
+{
   // First, join the thread
   CHECK(!pthread_join(thread_, NULL)) << "Pthread joining failed.";
   // Copy the data
@@ -242,17 +256,19 @@ void DataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 
 // The backward operations are dummy - they do not carry any computation.
 template <typename Dtype>
-Dtype DataLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
-      const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
+Dtype DataLayerVectorLabels<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
+												 const bool propagate_down, vector<Blob<Dtype>*>* bottom) 
+{
   return Dtype(0.);
 }
 
 template <typename Dtype>
-Dtype DataLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
-      const bool propagate_down, vector<Blob<Dtype>*>* bottom) {
+Dtype DataLayerVectorLabels<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+												 const bool propagate_down, vector<Blob<Dtype>*>* bottom) 
+{
   return Dtype(0.);
 }
 
-INSTANTIATE_CLASS(DataLayer);
+INSTANTIATE_CLASS(DataLayerVectorLabels);
 
 }  // namespace caffe

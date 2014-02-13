@@ -102,4 +102,63 @@ bool ReadImageToDatum(const string& filename, const int label,
   return true;
 }
 
+bool ReadImageWithLabelVectorToDatum(const string& filename, const std::vector<float> labels,
+									 const int height, const int width, Datum* datum) {
+  cv::Mat cv_img;
+  if (height > 0 && width > 0) {
+    cv::Mat cv_img_origin = cv::imread(filename, CV_LOAD_IMAGE_COLOR);
+    cv::resize(cv_img_origin, cv_img, cv::Size(height, width));
+  } else {
+    cv_img = cv::imread(filename, CV_LOAD_IMAGE_COLOR);
+  }
+  if (!cv_img.data) {
+    LOG(ERROR) << "Could not open or find file " << filename;
+    return false;
+  }
+  if (height > 0 && width > 0) {
+
+  }
+  
+  // Set the properties of the protobuff
+  datum->set_channels(3);
+  datum->set_height(cv_img.rows);
+  datum->set_width(cv_img.cols);
+  datum->set_numlabels(labels.size());
+  
+  float max = FLT_MIN;
+  int maxId = -1;
+  for(int l=0;l<labels.size();l++)
+  {
+	  if(labels[l] > max)
+	  {
+		max = labels[l];
+		maxId = l;
+	  }
+  }
+  datum->set_label(maxId);
+  
+  // Make sure the protobuff is clean
+  datum->clear_data();
+  datum->clear_float_data();
+  datum->clear_label_data();
+  
+  // Stores the data in the protobuff
+  string* datum_string = datum->mutable_data();
+  for (int c = 0; c < 3; ++c) {
+    for (int h = 0; h < cv_img.rows; ++h) {
+      for (int w = 0; w < cv_img.cols; ++w) {
+        datum_string->push_back(static_cast<char>(cv_img.at<cv::Vec3b>(h, w)[c]));
+      }
+    }
+  }
+  
+  // Stores the label data in the protobuff
+  for(int l=0; l<labels.size(); l++)
+  {
+	  datum->add_label_data(labels[l]);
+  }
+  
+  return true; 
+}
+
 }  // namespace caffe

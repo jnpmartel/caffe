@@ -27,6 +27,8 @@ Layer<Dtype>* GetLayer(const LayerParameter& param) {
     return new ConvolutionLayer<Dtype>(param);
   } else if (type == "data") {
     return new DataLayer<Dtype>(param);
+  } else if (type == "data_vectorlabel") {
+    return new DataLayerVectorLabels<Dtype>(param);
   } else if (type == "data_rand_transform") {
     return new DataRandTransformLayer<Dtype>(param);
   } else if (type == "dropout") {
@@ -53,6 +55,8 @@ Layer<Dtype>* GetLayer(const LayerParameter& param) {
     return new SoftmaxLayer<Dtype>(param);
   } else if (type == "softmax_loss") {
     return new SoftmaxWithLossLayer<Dtype>(param);
+  } else if (type == "softmax_vector_loss") {
+    return new SoftmaxWithVectorLossLayer<Dtype>(param);
   } else if (type == "multinomial_logistic_loss") {
     return new MultinomialLogisticLossLayer<Dtype>(param);
   } else {

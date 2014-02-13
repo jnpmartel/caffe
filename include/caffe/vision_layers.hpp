@@ -320,6 +320,45 @@ class DataLayer : public Layer<Dtype> {
   Blob<Dtype> data_mean_;
 };
 
+// This function is used to create a pthread that prefetches the data.
+template <typename Dtype>
+void* DataLayerVectorLabelsPrefetch(void* layer_pointer);
+
+template <typename Dtype>
+class DataLayerVectorLabels : public Layer<Dtype> {
+  // The function used to perform prefetching.
+  friend void* DataLayerVectorLabelsPrefetch<Dtype>(void* layer_pointer);
+
+ public:
+  explicit DataLayerVectorLabels(const LayerParameter& param)
+      : Layer<Dtype>(param) {}
+  virtual ~DataLayerVectorLabels();
+  virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
+					 vector<Blob<Dtype>*>* top);
+
+ protected:
+  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top);
+  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top);
+  virtual Dtype Backward_cpu(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  virtual Dtype Backward_gpu(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+
+  shared_ptr<leveldb::DB> db_;
+  shared_ptr<leveldb::Iterator> iter_;
+  int datum_numlabels_;
+  int datum_channels_;
+  int datum_height_;
+  int datum_width_;
+  int datum_size_;
+  pthread_t thread_;
+  shared_ptr<Blob<Dtype> > prefetch_data_;
+  shared_ptr<Blob<Dtype> > prefetch_label_;
+  Blob<Dtype> data_mean_;
+};
+
 template <typename Dtype>
 class DataRandTransformLayer : public Layer<Dtype> {
  public:
@@ -441,6 +480,38 @@ template <typename Dtype>
 class SoftmaxWithLossLayer : public Layer<Dtype> {
  public:
   explicit SoftmaxWithLossLayer(const LayerParameter& param)
+      : Layer<Dtype>(param), softmax_layer_(new SoftmaxLayer<Dtype>(param)) {}
+  virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top);
+
+ protected:
+  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top);
+  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      vector<Blob<Dtype>*>* top);
+  virtual Dtype Backward_cpu(const vector<Blob<Dtype>*>& top,
+      const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+  virtual Dtype Backward_gpu(const vector<Blob<Dtype>*>& top,
+     const bool propagate_down, vector<Blob<Dtype>*>* bottom);
+
+  shared_ptr<SoftmaxLayer<Dtype> > softmax_layer_;
+  // prob stores the output probability of the layer.
+  Blob<Dtype> prob_;
+  // Vector holders to call the underlying softmax layer forward and backward.
+  vector<Blob<Dtype>*> softmax_bottom_vec_;
+  vector<Blob<Dtype>*> softmax_top_vec_;
+};
+
+
+// SoftmaxWithLossLayer is a layer that implements softmax and then computes
+// the loss - it is preferred over softmax + multinomiallogisticloss in the
+// sense that during training, this will produce more numerically stable
+// gradients. During testing this layer could be replaced by a softmax layer
+// to generate probability outputs.
+template <typename Dtype>
+class SoftmaxWithVectorLossLayer : public Layer<Dtype> {
+ public:
+  explicit SoftmaxWithVectorLossLayer(const LayerParameter& param)
       : Layer<Dtype>(param), softmax_layer_(new SoftmaxLayer<Dtype>(param)) {}
   virtual void SetUp(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);

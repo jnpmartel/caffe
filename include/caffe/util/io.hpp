@@ -42,11 +42,19 @@ inline void WriteProtoToBinaryFile(
 
 bool ReadImageToDatum(const string& filename, const int label,
     const int height, const int width, Datum* datum);
-
+    
 inline bool ReadImageToDatum(const string& filename, const int label,
     Datum* datum) {
   return ReadImageToDatum(filename, label, 0, 0, datum);
 }
+
+bool ReadImageWithLabelVectorToDatum(const string& filename, const std::vector<float> labels,
+									 const int height, const int width, Datum* datum);
+									 
+inline bool ReadImageWithLabelVectorToDatum(const string& filename, const std::vector<float> labels,
+									        Datum* datum) {
+	return ReadImageWithLabelVectorToDatum(filename,labels,0,0,datum);
+}								 
 
 }  // namespace caffe
 
