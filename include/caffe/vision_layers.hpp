@@ -532,6 +532,8 @@ class SoftmaxWithVectorLossLayer : public Layer<Dtype> {
   // Vector holders to call the underlying softmax layer forward and backward.
   vector<Blob<Dtype>*> softmax_bottom_vec_;
   vector<Blob<Dtype>*> softmax_top_vec_;
+  
+  float temp_;
 };
 
 

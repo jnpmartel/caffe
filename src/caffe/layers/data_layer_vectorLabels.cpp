@@ -17,9 +17,7 @@ namespace caffe {
 
 template <typename Dtype>
 void* DataLayerVectorLabelsPrefetch(void* layer_pointer) 
-{
-   LOG(ERROR) << "Here";
-	
+{	
   CHECK(layer_pointer);
   DataLayerVectorLabels<Dtype>* layer = reinterpret_cast<DataLayerVectorLabels<Dtype>*>(layer_pointer);
   CHECK(layer);
@@ -232,7 +230,7 @@ void DataLayerVectorLabels<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& botto
   memcpy((*top)[1]->mutable_cpu_data(), prefetch_label_->cpu_data(),
       sizeof(Dtype) * prefetch_label_->count());
   // Start a new prefetch thread
-  CHECK(!pthread_create(&thread_, NULL, DataLayerPrefetch<Dtype>,
+  CHECK(!pthread_create(&thread_, NULL, DataLayerVectorLabelsPrefetch<Dtype>,
       reinterpret_cast<void*>(this))) << "Pthread execution failed.";
 }
 
@@ -250,7 +248,7 @@ void DataLayerVectorLabels<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& botto
       prefetch_label_->cpu_data(), sizeof(Dtype) * prefetch_label_->count(),
       cudaMemcpyHostToDevice));
   // Start a new prefetch thread
-  CHECK(!pthread_create(&thread_, NULL, DataLayerPrefetch<Dtype>,
+  CHECK(!pthread_create(&thread_, NULL, DataLayerVectorLabelsPrefetch<Dtype>,
       reinterpret_cast<void*>(this))) << "Pthread execution failed.";
 }
 

@@ -115,6 +115,8 @@ message LayerParameter {
   optional bool apply_contrast_brightness = 77 [ default = false ];
   optional float alpha_c = 78 [ default = 1.3 ];
   optional float beta_c = 79 [ default = 0.1 ];
+  
+  optional float temp = 90 [default = 1];
 }
 
 message LayerConnection {

@@ -19,6 +19,8 @@ void SoftmaxWithVectorLossLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom
   softmax_bottom_vec_.push_back(bottom[0]);
   softmax_top_vec_.push_back(&prob_);
   softmax_layer_->SetUp(softmax_bottom_vec_, &softmax_top_vec_);
+  temp_ = this->layer_param_.temp();
+  LOG(ERROR) << "Temp is: " << temp_;
 };
 
 template <typename Dtype>
@@ -55,7 +57,7 @@ Dtype SoftmaxWithVectorLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>
   {
 	  for(int l = 0; l < dim; l++)
 	  {
-		  bottom_diff[i * dim + l] -= label[i * dim + l];
+		  bottom_diff[i * dim + l] -= exp(- temp_ * label[i * dim + l]);
 	  }
     loss += -log(std::max(float(prob_data[i * dim + static_cast<int>(label[i])]), FLT_MIN));
   }
