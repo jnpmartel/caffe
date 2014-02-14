@@ -125,22 +125,23 @@ bool ReadImageWithLabelVectorToDatum(const string& filename, const std::vector<f
   datum->set_width(cv_img.cols);
   datum->set_numlabels(labels.size());
   
-  float max = FLT_MIN;
-  int maxId = -1;
+  float min = FLT_MAX;
+  int minId = -1;
   for(int l=0;l<labels.size();l++)
   {
-	  if(labels[l] > max)
+	  if(labels[l] < min)
 	  {
-		max = labels[l];
-		maxId = l;
+		min = labels[l];
+		minId = l;
 	  }
   }
-  datum->set_label(maxId);
+  datum->set_label(minId);
   
   // Make sure the protobuff is clean
   datum->clear_data();
   datum->clear_float_data();
   datum->clear_label_data();
+  datum->clear_label();
   
   // Stores the data in the protobuff
   string* datum_string = datum->mutable_data();
@@ -153,9 +154,10 @@ bool ReadImageWithLabelVectorToDatum(const string& filename, const std::vector<f
   }
   
   // Stores the label data in the protobuff
+  float val;
   for(int l=0; l<labels.size(); l++)
   {
-	  datum->add_label_data(labels[l]);
+	  datum->add_label_data(sqrtf(labels[l]));
   }
   
   return true; 
